@@ -25,10 +25,10 @@ Then right-click an NPC token and click the masked-figure icon.
 | Setting | Default | |
 | --- | --- | --- |
 | OBS address / port / password | localhost / 4455 / empty | From OBS's WebSocket Server Settings. Stored only in this browser. |
-| NPC scene | NPC | The scene that shows the portrait. |
+| NPC scene | NPC | The scene the portrait source is in. |
 | Portrait source | NPC Portrait | The Browser source the module changes. |
 | Camera scene | Camera | Used by "Back to my camera". |
-| Switch to the NPC scene | on | Turn off to only swap the picture and switch scenes yourself. |
+| Switching between NPC and camera | Switch scenes | Switch scenes; Show/hide the portrait (the portrait source sits over your camera in one scene and the buttons toggle it); or Picture only (you switch yourself, e.g. with a Stream Deck). |
 | Show the name | off | Caption with the token's name (what the players see). |
 | Picture to use | Actor portrait | Or token art. Falls back to the other when one is the default silhouette. |
 

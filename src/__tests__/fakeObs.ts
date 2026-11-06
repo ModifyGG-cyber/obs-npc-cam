@@ -15,6 +15,7 @@ export class FakeObs {
   readonly inputs = new Map<string, FakeInput>([['Webcam', { kind: 'dshow_input', settings: {} }]]);
   program = 'Camera';
   preview = '';
+  readonly enabled = new Map<string, boolean>();
   studio = false;
   readonly log: string[] = [];
   private server: WebSocketServer;
@@ -100,6 +101,10 @@ export class FakeObs {
         if (!this.scenes.get(name('sceneName'))?.includes(name('sourceName'))) throw new Error('no item');
         return { sceneItemId: 1 };
       }
+      case 'SetSceneItemEnabled':
+        if (!this.scenes.has(name('sceneName'))) throw new Error('no scene');
+        this.enabled.set(`${name('sceneName')}/${[...this.inputs.keys()].find(n => this.scenes.get(name('sceneName'))?.includes(n) && n !== 'Webcam') ?? ''}`, data['sceneItemEnabled'] === true);
+        return {};
       case 'CreateSceneItem':
         this.scenes.get(name('sceneName'))?.push(name('sourceName'));
         return { sceneItemId: 2 };

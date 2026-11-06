@@ -5,7 +5,7 @@ import { backToCamera, imageUrl, pickImage, portraitCss, setupObs, showPortrait,
 import { obsAuthentication, sha256Fallback } from '../sha256';
 
 const BASE = 'http://localhost:30000/';
-const settings: CamSettings = { npcScene: 'NPC', sourceName: 'NPC Portrait', cameraScene: 'Camera', switchScene: true, showName: true };
+const settings: CamSettings = { npcScene: 'NPC', sourceName: 'NPC Portrait', cameraScene: 'Camera', switchMode: 'scene', showName: true };
 
 describe('sha256', () => {
   it('matches Node for many lengths', () => {
@@ -120,9 +120,22 @@ describe('with a fake OBS', () => {
     await start();
     await client.connect({ host: 'localhost', port: obs.port, password: '' });
     await setupObs(client, settings);
-    await showPortrait(client, { ...settings, switchScene: false, showName: false }, BASE, { img: 'b.webp', name: 'Secret' });
+    await showPortrait(client, { ...settings, switchMode: 'none', showName: false }, BASE, { img: 'b.webp', name: 'Secret' });
     expect(obs.program).toBe('Camera');
     expect(obs.inputs.get('NPC Portrait')?.settings['css']).not.toContain('Secret');
+  });
+
+  it('can show and hide the portrait over the camera instead of switching scenes', async () => {
+    await start();
+    await client.connect({ host: 'localhost', port: obs.port, password: '' });
+    const overlay: CamSettings = { ...settings, switchMode: 'source', npcScene: 'Camera' };
+    expect(await setupObs(client, overlay)).toEqual(['Found the scene "Camera".', 'Created the Browser source "NPC Portrait" (1280x720) in "Camera".']);
+    await showPortrait(client, overlay, BASE, { img: 'c.webp' });
+    expect(obs.enabled.get('Camera/NPC Portrait')).toBe(true);
+    expect(obs.program).toBe('Camera');
+    expect(await backToCamera(client, overlay)).toBe('hid "NPC Portrait"');
+    expect(obs.enabled.get('Camera/NPC Portrait')).toBe(false);
+    await expect(showPortrait(client, { ...overlay, npcScene: 'NPC' }, BASE, { img: 'c.webp' })).rejects.toThrow(/has no source called/);
   });
 
   it('refuses to use a source that is not a Browser source, and warns about a wrong camera scene', async () => {
