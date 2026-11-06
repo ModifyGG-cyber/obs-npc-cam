@@ -68,7 +68,8 @@ function camSettings(): CamSettings {
   return {
     npcScene: text('npcScene'),
     sourceName: text('sourceName'),
-    showName: setting('showName') === true
+    showName: setting('showName') === true,
+    backdrop: setting('backdrop') === 'transparent' ? 'transparent' : 'black'
   };
 }
 
@@ -183,6 +184,15 @@ g().Hooks.once('init', () => {
   textSetting('password', 'OBS password', 'OBS: Tools > WebSocket Server Settings > Show Connect Info > Server Password. Stored only in this browser.', '', reconnect);
   textSetting('npcScene', 'OBS scene', 'The exact name of the OBS scene with your camera. The portrait sits on top of the camera in this scene.', 'Camera');
   textSetting('sourceName', 'Portrait source', 'The OBS Browser source that shows the portrait. "Set up OBS" creates it. Show on cam turns it on, Back to my camera turns it off (the eye icon in OBS).', 'NPC Portrait');
+  settings.register(MODULE_ID, 'backdrop', {
+    name: 'Around the picture',
+    hint: 'What fills the screen around the portrait. Black hides your camera completely; see-through lets your camera show around the picture.',
+    scope: 'client',
+    config: true,
+    type: String,
+    choices: { black: 'Black', transparent: 'See-through' },
+    default: 'black'
+  });
   settings.register(MODULE_ID, 'showName', {
     name: 'Show the name',
     hint: "Show the token's name under the portrait (the name the players see on the token).",

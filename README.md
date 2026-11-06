@@ -27,6 +27,7 @@ Then right-click an NPC token and click the masked-figure icon.
 | OBS address / port / password | localhost / 4455 / empty | From OBS's WebSocket Server Settings. Stored only in this browser. |
 | OBS scene | Camera | The scene with your camera; the portrait sits on top of it. |
 | Portrait source | NPC Portrait | The Browser source the module changes and shows or hides. |
+| Around the picture | Black | Black hides your camera behind the portrait; see-through lets it show around the picture. |
 | Show the name | off | Caption with the token's name (what the players see). |
 | Picture to use | Actor portrait | Or token art. Falls back to the other when one is the default silhouette. |
 

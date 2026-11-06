@@ -5,7 +5,7 @@ import { backToCamera, imageUrl, pickImage, portraitCss, setupObs, showPortrait,
 import { obsAuthentication, sha256Fallback } from '../sha256';
 
 const BASE = 'http://localhost:30000/';
-const settings: CamSettings = { npcScene: 'Camera', sourceName: 'NPC Portrait', showName: true };
+const settings: CamSettings = { npcScene: 'Camera', sourceName: 'NPC Portrait', showName: true, backdrop: 'black' };
 
 describe('sha256', () => {
   it('matches Node for many lengths', () => {
@@ -28,6 +28,8 @@ describe('portraits', () => {
   });
   it('captions safely', () => {
     expect(portraitCss()).not.toContain('::after');
+    expect(portraitCss()).toContain('background: #000 !important');
+    expect(portraitCss(undefined, 'transparent')).not.toContain('#000 !important');
     expect(portraitCss('Mr "X" \\ y')).toContain('content: "Mr \\"X\\" \\\\ y";');
   });
   it('skips the default silhouette', () => {
