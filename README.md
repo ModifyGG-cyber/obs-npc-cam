@@ -41,6 +41,8 @@ await cam.camera();
 await cam.setup();
 ```
 
+Other modules can follow along with the hooks `obsNpcCam.show` (called with the portrait `{ img, name }` and the token or actor) and `obsNpcCam.camera`. [Discord Speaking Portraits](https://github.com/ModifyGG-cyber/discord-speaking-portraits) uses them to speak as whoever is on cam.
+
 ## Development
 
 ```
