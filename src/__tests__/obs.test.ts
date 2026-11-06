@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { FakeObs, nodeSockets } from './fakeObs';
 import { ObsClient } from '../obsClient';
-import { backToCamera, pickImage, portraitUrl, setupObs, showPortrait, type CamSettings } from '../cam';
+import { backToCamera, imageUrl, pickImage, portraitCss, setupObs, showPortrait, type CamSettings } from '../cam';
 import { obsAuthentication, sha256Fallback } from '../sha256';
 
 const BASE = 'http://localhost:30000/';
@@ -21,18 +21,14 @@ describe('sha256', () => {
 });
 
 describe('portraits', () => {
-  it('builds the page address with the image and name', () => {
-    const url = new URL(portraitUrl(BASE, { img: 'worlds/nyarlathotep/actors/Jackson Elias.webp', name: 'Jackson Elias' }, 5));
-    expect(url.pathname).toBe('/modules/obs-npc-cam/portrait.html');
-    expect(url.searchParams.get('img')).toBe('http://localhost:30000/worlds/nyarlathotep/actors/Jackson%20Elias.webp');
-    expect(url.searchParams.get('name')).toBe('Jackson Elias');
-    expect(url.searchParams.get('t')).toBe('5');
+  it('builds the image address', () => {
+    expect(imageUrl(BASE, 'worlds/nyarlathotep/actors/Jackson Elias.webp', 5)).toBe('http://localhost:30000/worlds/nyarlathotep/actors/Jackson%20Elias.webp?npc-cam=5');
+    expect(imageUrl('http://example.com/game/', 'https://cdn.example.com/a.png', 5)).toBe('https://cdn.example.com/a.png?npc-cam=5');
+    expect(imageUrl('http://example.com/game/', 'worlds/a.png', 5)).toBe('http://example.com/game/worlds/a.png?npc-cam=5');
   });
-  it('keeps full image addresses and route prefixes', () => {
-    const url = new URL(portraitUrl('http://example.com/game/', { img: 'https://cdn.example.com/a.png' }));
-    expect(url.pathname).toBe('/game/modules/obs-npc-cam/portrait.html');
-    expect(url.searchParams.get('img')).toBe('https://cdn.example.com/a.png');
-    expect(url.searchParams.has('name')).toBe(false);
+  it('captions safely', () => {
+    expect(portraitCss()).not.toContain('::after');
+    expect(portraitCss('Mr "X" \\ y')).toContain('content: "Mr \\"X\\" \\\\ y";');
   });
   it('skips the default silhouette', () => {
     expect(pickImage('icons/svg/mystery-man.svg', 'tokens/cultist.webp', 'portrait')).toBe('tokens/cultist.webp');
@@ -89,7 +85,7 @@ describe('with a fake OBS', () => {
 
     await expect(showPortrait(client, settings, BASE, { img: 'a.webp' })).rejects.toThrow(/Set up OBS/);
 
-    const report = await setupObs(client, settings, BASE);
+    const report = await setupObs(client, settings);
     expect(report).toEqual([
       'Created the scene "NPC".',
       'Created the Browser source "NPC Portrait" (1280x720) in "NPC".',
@@ -97,20 +93,23 @@ describe('with a fake OBS', () => {
     ]);
     expect(obs.inputs.get('NPC Portrait')).toEqual({
       kind: 'browser_source',
-      settings: { url: 'http://localhost:30000/modules/obs-npc-cam/portrait.html', width: 1280, height: 720 }
+      settings: { url: 'about:blank', css: portraitCss(), width: 1280, height: 720 }
     });
 
     await showPortrait(client, settings, BASE, { img: 'worlds/w/elias.webp', name: 'Jackson Elias' });
-    const url = new URL(String(obs.inputs.get('NPC Portrait')?.settings['url']));
-    expect(url.searchParams.get('img')).toBe('http://localhost:30000/worlds/w/elias.webp');
-    expect(url.searchParams.get('name')).toBe('Jackson Elias');
+    const shown = obs.inputs.get('NPC Portrait')?.settings ?? {};
+    expect(String(shown['url'])).toMatch(/^http:\/\/localhost:30000\/worlds\/w\/elias\.webp\?npc-cam=\d+$/);
+    expect(shown['css']).toContain('content: "Jackson Elias"');
     expect(obs.program).toBe('NPC');
+    expect(obs.preview).toBe('');
 
+    obs.studio = true;
     await backToCamera(client, settings);
     expect(obs.program).toBe('Camera');
+    expect(obs.preview).toBe('Camera');
 
     // Running setup again adds nothing.
-    expect(await setupObs(client, settings, BASE)).toEqual([
+    expect(await setupObs(client, settings)).toEqual([
       'Found the scene "NPC".',
       'Found the source "NPC Portrait" in "NPC".',
       'Found the camera scene "Camera".'
@@ -120,17 +119,17 @@ describe('with a fake OBS', () => {
   it('can leave the scene alone and hide the name', async () => {
     await start();
     await client.connect({ host: 'localhost', port: obs.port, password: '' });
-    await setupObs(client, settings, BASE);
+    await setupObs(client, settings);
     await showPortrait(client, { ...settings, switchScene: false, showName: false }, BASE, { img: 'b.webp', name: 'Secret' });
     expect(obs.program).toBe('Camera');
-    expect(new URL(String(obs.inputs.get('NPC Portrait')?.settings['url'])).searchParams.has('name')).toBe(false);
+    expect(obs.inputs.get('NPC Portrait')?.settings['css']).not.toContain('Secret');
   });
 
   it('refuses to use a source that is not a Browser source, and warns about a wrong camera scene', async () => {
     await start();
     await client.connect({ host: 'localhost', port: obs.port, password: '' });
-    await expect(setupObs(client, { ...settings, sourceName: 'Webcam' }, BASE)).rejects.toThrow(/not a Browser source/);
-    const report = await setupObs(client, { ...settings, cameraScene: 'Me' }, BASE);
+    await expect(setupObs(client, { ...settings, sourceName: 'Webcam' })).rejects.toThrow(/not a Browser source/);
+    const report = await setupObs(client, { ...settings, cameraScene: 'Me' });
     expect(report[2]).toMatch(/no scene called "Me".*Camera, NPC/);
     await expect(backToCamera(client, { ...settings, cameraScene: 'Me' })).rejects.toThrow(/No scene was found/);
   });

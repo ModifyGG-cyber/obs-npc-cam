@@ -124,14 +124,16 @@ async function showSelected(): Promise<void> {
 }
 
 async function camera(): Promise<void> {
-  await backToCamera(await connected(), camSettings());
+  const settings = camSettings();
+  await backToCamera(await connected(), settings);
+  g().ui.notifications?.info(`OBS NPC Cam: switched OBS to "${settings.cameraScene}".`);
 }
 
 const escapeHtml = (text: string): string =>
   text.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
 
 async function setup(): Promise<string[]> {
-  const lines = await setupObs(await connected(), camSettings(), foundryBase());
+  const lines = await setupObs(await connected(), camSettings());
   const dialog = g().foundry?.applications?.api?.DialogV2;
   const content = `<ul>${lines.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</ul>`;
   if (dialog) await dialog.prompt({ window: { title: 'OBS NPC Cam setup' }, content, ok: { label: 'OK' } });

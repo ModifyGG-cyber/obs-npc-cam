@@ -7,7 +7,7 @@ Show an NPC's portrait in OBS with one click from Foundry VTT, and switch OBS be
 - **Show on cam** on a token's right-click menu (the HUD), on actor sheets, and on the right-click menu in the Actors list.
 - Two buttons in the token controls on the left: **Show selected token on cam** and **Back to my camera**.
 - Optional keybindings for both (Configure Controls > OBS NPC Cam; no keys are set by default).
-- The portrait fades in, fits the screen, and can carry the NPC's name as a caption.
+- The portrait fades in, fits the screen, and can carry the NPC's name as a caption. OBS loads the image straight from Foundry and styles it with the Browser source's custom CSS.
 - Your Stream Deck scene toggles keep working: the module only changes one Browser source, and switching to the NPC scene is optional.
 
 Only the GM sees the buttons. The connection runs from the GM's browser, so Foundry and OBS should be on the same computer (or set the OBS address in the settings).

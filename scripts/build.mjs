@@ -1,4 +1,4 @@
-// Bundles src/main.ts into dist/obs-npc-cam/ with module.json and the portrait page, ready to copy into Foundry's modules folder.
+// Bundles src/main.ts into dist/obs-npc-cam/ with module.json, ready to copy into Foundry's modules folder.
 import { build } from 'esbuild';
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
@@ -9,7 +9,6 @@ await build({ entryPoints: ['src/main.ts'], bundle: true, format: 'esm', target:
 const manifest = JSON.parse(readFileSync('module.json', 'utf8'));
 manifest.version = pkg.version;
 writeFileSync(`${out}/module.json`, JSON.stringify(manifest, null, 2) + '\n');
-cpSync('static/portrait.html', `${out}/portrait.html`);
 cpSync('LICENSE', `${out}/LICENSE`);
 cpSync('README.md', `${out}/README.md`);
 console.log(`built ${out} v${pkg.version}`);

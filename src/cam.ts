@@ -7,8 +7,6 @@ import type { ObsClient } from './obsClient';
 import { ObsError } from './obsClient';
 
 export const MODULE_ID = 'obs-npc-cam';
-export const PORTRAIT_PAGE = `modules/${MODULE_ID}/portrait.html`;
-
 export interface CamSettings {
   npcScene: string;
   sourceName: string;
@@ -22,16 +20,34 @@ export interface Portrait {
   name?: string;
 }
 
-/** The address OBS loads: this module's portrait page with the image and caption in the query. */
-export function portraitUrl(foundryBase: string, portrait: Portrait | null, stamp = Date.now()): string {
-  const page = new URL(PORTRAIT_PAGE, foundryBase);
-  if (portrait) {
-    page.searchParams.set('img', new URL(portrait.img, foundryBase).href);
-    if (portrait.name) page.searchParams.set('name', portrait.name);
-    // A new address every time, so OBS reloads even when the same NPC is shown again.
-    page.searchParams.set('t', String(stamp));
+/**
+ * The address OBS loads: the image itself, served by Foundry. A new address every time, so OBS reloads
+ * (and the fade plays) even when the same NPC is shown again.
+ */
+export function imageUrl(foundryBase: string, img: string, stamp = Date.now()): string {
+  const url = new URL(img, foundryBase);
+  url.searchParams.set('npc-cam', String(stamp));
+  return url.href;
+}
+
+const cssString = (text: string): string => `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[\r\n]+/g, ' ')}"`;
+
+/**
+ * The Browser source's custom CSS: fits the image to the canvas on a transparent background, fades it in,
+ * and draws the caption. The browser shows a bare image on a dark page by default; this overrides that.
+ */
+export function portraitCss(name?: string): string {
+  const rules = [
+    'html, body { margin: 0 !important; width: 100vw !important; height: 100vh !important; overflow: hidden !important; background: transparent !important; }',
+    'img { position: fixed !important; inset: 0 !important; margin: 0 !important; width: 100vw !important; height: 100vh !important; object-fit: contain !important; background: transparent !important; cursor: default !important; animation: npc-cam-fade 0.6s ease both; }',
+    '@keyframes npc-cam-fade { from { opacity: 0; } to { opacity: 1; } }'
+  ];
+  if (name) {
+    rules.push(
+      `body::after { content: ${cssString(name)}; position: fixed; left: 50%; bottom: 4vh; transform: translateX(-50%); padding: 0.4em 1.2em; font: 600 5vh/1.2 Georgia, "Times New Roman", serif; color: #f4ecd8; background: rgba(0, 0, 0, 0.6); border-radius: 0.3em; text-shadow: 0 2px 6px #000; white-space: nowrap; animation: npc-cam-fade 0.6s ease 0.2s both; }`
+    );
   }
-  return page.href;
+  return rules.join('\n');
 }
 
 const DEFAULT_ART = /(^|\/)icons\/svg\/mystery-man\.svg$/;
@@ -63,21 +79,32 @@ export async function showPortrait(client: ObsClient, settings: CamSettings, fou
   }
   const shown: Portrait = { img: portrait.img };
   if (settings.showName && portrait.name) shown.name = portrait.name;
-  await client.request('SetInputSettings', { inputName: settings.sourceName, inputSettings: { url: portraitUrl(foundryBase, shown) }, overlay: true });
-  if (settings.switchScene && settings.npcScene) await client.request('SetCurrentProgramScene', { sceneName: settings.npcScene });
+  await client.request('SetInputSettings', {
+    inputName: settings.sourceName,
+    inputSettings: { url: imageUrl(foundryBase, portrait.img), css: portraitCss(shown.name), is_local_file: false },
+    overlay: true
+  });
+  if (settings.switchScene && settings.npcScene) await switchScene(client, settings.npcScene);
 }
 
 /** Switches OBS back to the camera scene. */
 export async function backToCamera(client: ObsClient, settings: CamSettings): Promise<void> {
   if (!settings.cameraScene) throw new ObsError('Set the camera scene name in the OBS NPC Cam settings first.');
-  await client.request('SetCurrentProgramScene', { sceneName: settings.cameraScene });
+  await switchScene(client, settings.cameraScene);
+}
+
+/** Switches the live output. In Studio Mode the preview follows too, so what you look at matches what goes out. */
+async function switchScene(client: ObsClient, sceneName: string): Promise<void> {
+  await client.request('SetCurrentProgramScene', { sceneName });
+  const studio = await exists(client, 'GetStudioModeEnabled', {});
+  if (studio?.['studioModeEnabled'] === true) await client.request('SetCurrentPreviewScene', { sceneName });
 }
 
 /**
  * Makes sure OBS has the NPC scene with a Browser source for the portrait in it. Only ever adds things;
  * nothing in OBS is changed or removed. Returns what it did, one line each.
  */
-export async function setupObs(client: ObsClient, settings: CamSettings, foundryBase: string): Promise<string[]> {
+export async function setupObs(client: ObsClient, settings: CamSettings): Promise<string[]> {
   const report: string[] = [];
   const list = await client.request('GetSceneList');
   const scenes = ((list['scenes'] as { sceneName?: string }[] | undefined) ?? []).map(s => s.sceneName ?? '');
@@ -101,7 +128,7 @@ export async function setupObs(client: ObsClient, settings: CamSettings, foundry
       sceneName: settings.npcScene,
       inputName: settings.sourceName,
       inputKind: 'browser_source',
-      inputSettings: { url: portraitUrl(foundryBase, null), width, height },
+      inputSettings: { url: 'about:blank', css: portraitCss(), width, height },
       sceneItemEnabled: true
     });
     report.push(`Created the Browser source "${settings.sourceName}" (${String(width)}x${String(height)}) in "${settings.npcScene}".`);

@@ -14,6 +14,8 @@ export class FakeObs {
   readonly scenes = new Map<string, string[]>([['Camera', ['Webcam']]]);
   readonly inputs = new Map<string, FakeInput>([['Webcam', { kind: 'dshow_input', settings: {} }]]);
   program = 'Camera';
+  preview = '';
+  studio = false;
   readonly log: string[] = [];
   private server: WebSocketServer;
   port = 0;
@@ -107,6 +109,11 @@ export class FakeObs {
         input.settings = { ...input.settings, ...(data['inputSettings'] as Record<string, unknown>) };
         return {};
       }
+      case 'GetStudioModeEnabled':
+        return { studioModeEnabled: this.studio };
+      case 'SetCurrentPreviewScene':
+        this.preview = name('sceneName');
+        return {};
       case 'SetCurrentProgramScene':
         if (!this.scenes.has(name('sceneName'))) throw new Error('No scene was found by the name of `' + name('sceneName') + '`.');
         this.program = name('sceneName');
