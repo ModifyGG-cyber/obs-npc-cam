@@ -1,0 +1,14 @@
+{
+  "id": "obs-npc-cam",
+  "title": "OBS NPC Cam",
+  "description": "Show an NPC's portrait in OBS with one click from a token, character sheet or the Actors list, and switch your OBS scene between the NPC and your camera. Works with any game system.",
+  "version": "1.0.0",
+  "authors": [{ "name": "ModifyGG" }],
+  "compatibility": { "minimum": "13", "verified": "14" },
+  "esmodules": ["module.js"],
+  "url": "https://github.com/ModifyGG-cyber/foundry-obs-npc-cam",
+  "manifest": "https://github.com/ModifyGG-cyber/foundry-obs-npc-cam/releases/latest/download/module.json",
+  "download": "https://github.com/ModifyGG-cyber/foundry-obs-npc-cam/releases/latest/download/obs-npc-cam.zip",
+  "license": "LICENSE",
+  "readme": "README.md"
+}
