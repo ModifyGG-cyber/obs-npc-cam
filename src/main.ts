@@ -143,12 +143,21 @@ const run = (action: () => Promise<unknown>): void => {
   void action().catch(report);
 };
 
-/** The settings button: Foundry opens settings menus with `new type().render()`, so this runs the setup instead of a form. */
-class SetupRunner {
-  render(): this {
-    run(setup);
-    return this;
-  }
+type AppClass = new (...args: unknown[]) => { render(...args: unknown[]): unknown };
+
+/**
+ * The settings button. Foundry only accepts an Application class here and opens it with `new type().render()`,
+ * so this subclass runs the setup instead of drawing a window.
+ */
+function setupRunnerClass(): AppClass | null {
+  const Base = (g().foundry?.applications?.api as { ApplicationV2?: AppClass } | undefined)?.ApplicationV2;
+  if (!Base) return null;
+  return class SetupRunner extends Base {
+    override render(): Promise<this> {
+      run(setup);
+      return Promise.resolve(this);
+    }
+  };
 }
 
 const SHOW_LABEL = 'Show on cam';
@@ -163,14 +172,6 @@ g().Hooks.once('init', () => {
   const textSetting = (key: string, name: string, hint: string, fallback: string, onChange?: () => void): void => {
     settings.register(MODULE_ID, key, { name, hint, scope: 'client', config: true, type: String, default: fallback, ...(onChange ? { onChange } : {}) });
   };
-  settings.registerMenu(MODULE_ID, 'setup', {
-    name: 'Set up OBS',
-    label: 'Set up OBS',
-    hint: 'Connects to OBS and adds the NPC scene and portrait source if they are missing. It never changes or removes anything already in OBS.',
-    icon: 'fa-solid fa-plug',
-    type: SetupRunner,
-    restricted: true
-  });
   textSetting('host', 'OBS address', 'Where OBS runs. Leave as localhost when OBS is on this computer.', 'localhost', reconnect);
   settings.register(MODULE_ID, 'port', {
     name: 'OBS port',
@@ -210,6 +211,23 @@ g().Hooks.once('init', () => {
     choices: { portrait: 'Actor portrait', token: 'Token art' },
     default: 'portrait'
   });
+
+  // Last, so a problem with the button can never stop the settings above from loading.
+  try {
+    const SetupRunner = setupRunnerClass();
+    if (SetupRunner) {
+      settings.registerMenu(MODULE_ID, 'setup', {
+        name: 'Set up OBS',
+        label: 'Set up OBS',
+        hint: 'Connects to OBS and adds the NPC scene and portrait source if they are missing. It never changes or removes anything already in OBS.',
+        icon: 'fa-solid fa-plug',
+        type: SetupRunner,
+        restricted: true
+      });
+    }
+  } catch (error) {
+    console.warn('OBS NPC Cam | Could not add the Set up OBS button; use game.modules.get("obs-npc-cam").api.setup() instead.', error);
+  }
 
   g().game.keybindings?.register(MODULE_ID, 'showSelected', {
     name: 'Show selected token on cam',
