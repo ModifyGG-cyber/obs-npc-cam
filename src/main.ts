@@ -55,6 +55,8 @@ interface Globals {
   WebSocket: new (url: string) => unknown;
 }
 
+declare const __VERSION__: string;
+const VERSION = typeof __VERSION__ === 'string' ? __VERSION__ : 'dev';
 const g = (): Globals => globalThis as unknown as Globals;
 const isGM = (): boolean => g().game.user?.isGM === true;
 const setting = (key: string): unknown => g().game.settings.get(MODULE_ID, key);
@@ -69,8 +71,7 @@ function camSettings(): CamSettings {
     npcScene: text('npcScene'),
     sourceName: text('sourceName'),
     cameraSource: text('cameraSource'),
-    showName: setting('showName') === true,
-    backdrop: setting('backdrop') === 'transparent' ? 'transparent' : 'black'
+    showName: setting('showName') === true
   };
 }
 
@@ -114,7 +115,10 @@ function portraitOf(subject: unknown): Portrait | null {
 async function show(subject: unknown): Promise<void> {
   const portrait = portraitOf(subject);
   if (!portrait) throw new Error('That has no image to show.');
-  await showPortrait(await connected(), camSettings(), foundryBase(), portrait);
+  const settings = camSettings();
+  await showPortrait(await connected(), settings, foundryBase(), portrait);
+  const camera = settings.cameraSource ? ` and hid "${settings.cameraSource}"` : ' (no camera source is set, so the camera was left on)';
+  g().ui.notifications?.info(`OBS NPC Cam: showing ${portrait.name ?? 'the picture'}${camera}.`);
 }
 
 async function showSelected(): Promise<void> {
@@ -124,7 +128,9 @@ async function showSelected(): Promise<void> {
 }
 
 async function camera(): Promise<void> {
-  await backToCamera(await connected(), camSettings());
+  const settings = camSettings();
+  await backToCamera(await connected(), settings);
+  g().ui.notifications?.info(`OBS NPC Cam: back to ${settings.cameraSource ? `"${settings.cameraSource}"` : 'your camera'}.`);
 }
 
 const escapeHtml = (text: string): string =>
@@ -165,6 +171,7 @@ const SHOW_ICON = 'fa-solid fa-user-secret';
 const CAMERA_ICON = 'fa-solid fa-video';
 
 g().Hooks.once('init', () => {
+  console.log(`OBS NPC Cam | version ${VERSION}`);
   const { settings } = g().game;
   const reconnect = (): void => {
     client.disconnect();
@@ -186,15 +193,6 @@ g().Hooks.once('init', () => {
   textSetting('npcScene', 'OBS scene', 'The exact name of the OBS scene with your camera. The portrait sits on top of the camera in this scene.', 'Camera');
   textSetting('sourceName', 'Portrait source', 'The OBS Browser source that shows the portrait. "Set up OBS" creates it. Show on cam turns it on, Back to my camera turns it off (the eye icon in OBS).', 'NPC Portrait');
   textSetting('cameraSource', 'Camera source', 'Your webcam source in the same scene. It is hidden while an NPC is shown and comes back with Back to my camera. Leave empty to never touch it.', 'Camera');
-  settings.register(MODULE_ID, 'backdrop', {
-    name: 'Around the picture',
-    hint: 'What fills the screen around the portrait. Black hides your camera completely; see-through lets your camera show around the picture.',
-    scope: 'client',
-    config: true,
-    type: String,
-    choices: { black: 'Black', transparent: 'See-through' },
-    default: 'black'
-  });
   settings.register(MODULE_ID, 'showName', {
     name: 'Show the name',
     hint: "Show the token's name under the portrait (the name the players see on the token).",

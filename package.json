@@ -1,6 +1,6 @@
 {
   "name": "obs-npc-cam",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "Show an NPC's portrait in OBS from Foundry VTT with one click",
   "type": "module",

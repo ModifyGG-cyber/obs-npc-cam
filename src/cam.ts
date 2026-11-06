@@ -7,16 +7,12 @@ import type { ObsClient } from './obsClient';
 import { ObsError } from './obsClient';
 
 export const MODULE_ID = 'obs-npc-cam';
-/** What fills the screen around the picture: black hides the camera completely, transparent lets it show. */
-export type Backdrop = 'black' | 'transparent';
-
 export interface CamSettings {
   npcScene: string;
   sourceName: string;
   /** Your webcam source in the same scene, hidden while an NPC is shown. Empty: leave it alone. */
   cameraSource: string;
   showName: boolean;
-  backdrop: Backdrop;
 }
 
 export interface Portrait {
@@ -40,9 +36,9 @@ const cssString = (text: string): string => `"${text.replace(/\\/g, '\\\\').repl
  * The Browser source's custom CSS: fits the image to the canvas on a transparent background, fades it in,
  * and draws the caption. The browser shows a bare image on a dark page by default; this overrides that.
  */
-export function portraitCss(name?: string, backdrop: Backdrop = 'black'): string {
+export function portraitCss(name?: string): string {
   const rules = [
-    `html, body { margin: 0 !important; width: 100vw !important; height: 100vh !important; overflow: hidden !important; background: ${backdrop === 'black' ? '#000' : 'transparent'} !important; }`,
+    `html, body { margin: 0 !important; width: 100vw !important; height: 100vh !important; overflow: hidden !important; background: #000 !important; }`,
     'img { position: fixed !important; inset: 0 !important; margin: 0 !important; width: 100vw !important; height: 100vh !important; object-fit: contain !important; background: transparent !important; cursor: default !important; animation: npc-cam-fade 0.6s ease both; }',
     '@keyframes npc-cam-fade { from { opacity: 0; } to { opacity: 1; } }'
   ];
@@ -85,7 +81,7 @@ export async function showPortrait(client: ObsClient, settings: CamSettings, fou
   if (settings.showName && portrait.name) shown.name = portrait.name;
   await client.request('SetInputSettings', {
     inputName: settings.sourceName,
-    inputSettings: { url: imageUrl(foundryBase, portrait.img), css: portraitCss(shown.name, settings.backdrop), is_local_file: false },
+    inputSettings: { url: imageUrl(foundryBase, portrait.img), css: portraitCss(shown.name), is_local_file: false },
     overlay: true
   });
   // Portrait on first, then the camera off, so the stream never flashes empty.
@@ -134,7 +130,7 @@ export async function setupObs(client: ObsClient, settings: CamSettings): Promis
       sceneName: settings.npcScene,
       inputName: settings.sourceName,
       inputKind: 'browser_source',
-      inputSettings: { url: 'about:blank', css: portraitCss(undefined, settings.backdrop), width, height },
+      inputSettings: { url: 'about:blank', css: portraitCss(), width, height },
       sceneItemEnabled: false
     });
     report.push(`Created the Browser source "${settings.sourceName}" (${String(width)}x${String(height)}) on top of "${settings.npcScene}", hidden until you click Show on cam.`);
