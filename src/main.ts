@@ -117,8 +117,6 @@ async function show(subject: unknown): Promise<void> {
   if (!portrait) throw new Error('That has no image to show.');
   const settings = camSettings();
   await showPortrait(await connected(), settings, foundryBase(), portrait);
-  const camera = settings.cameraSource ? ` and hid "${settings.cameraSource}"` : ' (no camera source is set, so the camera was left on)';
-  g().ui.notifications?.info(`OBS NPC Cam: showing ${portrait.name ?? 'the picture'}${camera}.`);
 }
 
 async function showSelected(): Promise<void> {
@@ -130,7 +128,6 @@ async function showSelected(): Promise<void> {
 async function camera(): Promise<void> {
   const settings = camSettings();
   await backToCamera(await connected(), settings);
-  g().ui.notifications?.info(`OBS NPC Cam: back to ${settings.cameraSource ? `"${settings.cameraSource}"` : 'your camera'}.`);
 }
 
 const escapeHtml = (text: string): string =>
