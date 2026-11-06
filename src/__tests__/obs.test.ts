@@ -5,7 +5,7 @@ import { backToCamera, imageUrl, pickImage, portraitCss, setupObs, showPortrait,
 import { obsAuthentication, sha256Fallback } from '../sha256';
 
 const BASE = 'http://localhost:30000/';
-const settings: CamSettings = { npcScene: 'NPC', sourceName: 'NPC Portrait', cameraScene: 'Camera', switchMode: 'scene', showName: true };
+const settings: CamSettings = { npcScene: 'Camera', sourceName: 'NPC Portrait', showName: true };
 
 describe('sha256', () => {
   it('matches Node for many lengths', () => {
@@ -79,71 +79,53 @@ describe('with a fake OBS', () => {
     expect(client.connected).toBe(true);
   });
 
-  it('sets up, shows an NPC and goes back to the camera', async () => {
+  it('sets up, shows an NPC over the camera and hides it again', async () => {
     await start('secret');
     await client.connect({ host: 'localhost', port: obs.port, password: 'secret' });
 
     await expect(showPortrait(client, settings, BASE, { img: 'a.webp' })).rejects.toThrow(/Set up OBS/);
+    await expect(setupObs(client, { ...settings, npcScene: 'Nope' })).rejects.toThrow(/no scene called "Nope".*Your scenes: Camera/);
 
-    const report = await setupObs(client, settings);
-    expect(report).toEqual([
-      'Created the scene "NPC".',
-      'Created the Browser source "NPC Portrait" (1280x720) in "NPC".',
-      'Found the camera scene "Camera".'
+    expect(await setupObs(client, settings)).toEqual([
+      'Found the scene "Camera".',
+      'Created the Browser source "NPC Portrait" (1280x720) on top of "Camera", hidden until you click Show on cam.'
     ]);
-    expect(obs.inputs.get('NPC Portrait')).toEqual({
-      kind: 'browser_source',
-      settings: { url: 'about:blank', css: portraitCss(), width: 1280, height: 720 }
-    });
+    expect(obs.inputs.get('NPC Portrait')).toEqual({ kind: 'browser_source', settings: { url: 'about:blank', css: portraitCss(), width: 1280, height: 720 } });
+    expect(obs.scenes.get('Camera')).toEqual(['Webcam', 'NPC Portrait']);
 
     await showPortrait(client, settings, BASE, { img: 'worlds/w/elias.webp', name: 'Jackson Elias' });
     const shown = obs.inputs.get('NPC Portrait')?.settings ?? {};
     expect(String(shown['url'])).toMatch(/^http:\/\/localhost:30000\/worlds\/w\/elias\.webp\?npc-cam=\d+$/);
     expect(shown['css']).toContain('content: "Jackson Elias"');
-    expect(obs.program).toBe('NPC');
-    expect(obs.preview).toBe('');
-
-    obs.studio = true;
-    await backToCamera(client, settings);
+    expect(obs.enabled.get('Camera/NPC Portrait')).toBe(true);
     expect(obs.program).toBe('Camera');
-    expect(obs.preview).toBe('Camera');
+
+    await backToCamera(client, settings);
+    expect(obs.enabled.get('Camera/NPC Portrait')).toBe(false);
 
     // Running setup again adds nothing.
-    expect(await setupObs(client, settings)).toEqual([
-      'Found the scene "NPC".',
-      'Found the source "NPC Portrait" in "NPC".',
-      'Found the camera scene "Camera".'
-    ]);
+    expect(await setupObs(client, settings)).toEqual(['Found the scene "Camera".', 'Found the source "NPC Portrait" in "Camera".']);
   });
 
-  it('can leave the scene alone and hide the name', async () => {
+  it('can hide the name', async () => {
     await start();
     await client.connect({ host: 'localhost', port: obs.port, password: '' });
     await setupObs(client, settings);
-    await showPortrait(client, { ...settings, switchMode: 'none', showName: false }, BASE, { img: 'b.webp', name: 'Secret' });
-    expect(obs.program).toBe('Camera');
+    await showPortrait(client, { ...settings, showName: false }, BASE, { img: 'b.webp', name: 'Secret' });
     expect(obs.inputs.get('NPC Portrait')?.settings['css']).not.toContain('Secret');
   });
 
-  it('can show and hide the portrait over the camera instead of switching scenes', async () => {
+  it('explains a source missing from the scene', async () => {
     await start();
     await client.connect({ host: 'localhost', port: obs.port, password: '' });
-    const overlay: CamSettings = { ...settings, switchMode: 'source', npcScene: 'Camera' };
-    expect(await setupObs(client, overlay)).toEqual(['Found the scene "Camera".', 'Created the Browser source "NPC Portrait" (1280x720) in "Camera".']);
-    await showPortrait(client, overlay, BASE, { img: 'c.webp' });
-    expect(obs.enabled.get('Camera/NPC Portrait')).toBe(true);
-    expect(obs.program).toBe('Camera');
-    expect(await backToCamera(client, overlay)).toBe('hid "NPC Portrait"');
-    expect(obs.enabled.get('Camera/NPC Portrait')).toBe(false);
-    await expect(showPortrait(client, { ...overlay, npcScene: 'NPC' }, BASE, { img: 'c.webp' })).rejects.toThrow(/has no source called/);
+    await setupObs(client, settings);
+    obs.scenes.set('Other', []);
+    await expect(showPortrait(client, { ...settings, npcScene: 'Other' }, BASE, { img: 'c.webp' })).rejects.toThrow(/has no source called/);
   });
 
-  it('refuses to use a source that is not a Browser source, and warns about a wrong camera scene', async () => {
+  it('refuses to use a source that is not a Browser source', async () => {
     await start();
     await client.connect({ host: 'localhost', port: obs.port, password: '' });
     await expect(setupObs(client, { ...settings, sourceName: 'Webcam' })).rejects.toThrow(/not a Browser source/);
-    const report = await setupObs(client, { ...settings, cameraScene: 'Me' });
-    expect(report[2]).toMatch(/no scene called "Me".*Camera, NPC/);
-    await expect(backToCamera(client, { ...settings, cameraScene: 'Me' })).rejects.toThrow(/No scene was found/);
   });
 });

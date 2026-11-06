@@ -1,5 +1,5 @@
 /**
- * What the buttons do in OBS: put a portrait into the NPC source, switch scenes, and the one-time setup.
+ * What the buttons do in OBS: put a portrait into the portrait source, show or hide it over the camera, and the one-time setup.
  * Kept free of Foundry globals so it can be tested against a fake OBS.
  */
 
@@ -7,14 +7,9 @@ import type { ObsClient } from './obsClient';
 import { ObsError } from './obsClient';
 
 export const MODULE_ID = 'obs-npc-cam';
-export type SwitchMode = 'scene' | 'source' | 'none';
-
 export interface CamSettings {
   npcScene: string;
   sourceName: string;
-  cameraScene: string;
-  /** scene: switch OBS scenes. source: show/hide the portrait source over the camera. none: only swap the picture. */
-  switchMode: SwitchMode;
   showName: boolean;
 }
 
@@ -73,7 +68,7 @@ async function exists(client: ObsClient, requestType: string, data: Record<strin
   }
 }
 
-/** Puts a portrait into the NPC source and, if wanted, switches OBS to the NPC scene. */
+/** Puts a portrait into the portrait source and turns the source on, over the camera. */
 export async function showPortrait(client: ObsClient, settings: CamSettings, foundryBase: string, portrait: Portrait): Promise<void> {
   const input = await exists(client, 'GetInputSettings', { inputName: settings.sourceName });
   if (!input) throw new ObsError(`OBS has no source called "${settings.sourceName}". Click "Set up OBS" in the OBS NPC Cam settings to create it.`);
@@ -87,37 +82,24 @@ export async function showPortrait(client: ObsClient, settings: CamSettings, fou
     inputSettings: { url: imageUrl(foundryBase, portrait.img), css: portraitCss(shown.name), is_local_file: false },
     overlay: true
   });
-  if (settings.switchMode === 'scene' && settings.npcScene) await switchScene(client, settings.npcScene);
-  if (settings.switchMode === 'source') await setSourceVisible(client, settings, true);
+  await setSourceVisible(client, settings, true);
 }
 
-/** Back to your own camera: switches to the camera scene, or hides the portrait source. Returns what it did. */
-export async function backToCamera(client: ObsClient, settings: CamSettings): Promise<string> {
-  if (settings.switchMode === 'source') {
-    await setSourceVisible(client, settings, false);
-    return `hid "${settings.sourceName}"`;
-  }
-  if (!settings.cameraScene) throw new ObsError('Set the camera scene name in the OBS NPC Cam settings first.');
-  await switchScene(client, settings.cameraScene);
-  return `switched OBS to "${settings.cameraScene}"`;
+/** Back to your own camera: hides the portrait source, so the camera underneath shows again. */
+export async function backToCamera(client: ObsClient, settings: CamSettings): Promise<void> {
+  await setSourceVisible(client, settings, false);
 }
 
-/** Shows or hides the portrait source inside the NPC scene setting's scene (the eye icon in OBS). */
+/** Shows or hides the portrait source in the camera scene (the eye icon in OBS). */
 async function setSourceVisible(client: ObsClient, settings: CamSettings, visible: boolean): Promise<void> {
   const item = await exists(client, 'GetSceneItemId', { sceneName: settings.npcScene, sourceName: settings.sourceName });
   if (!item) throw new ObsError(`The scene "${settings.npcScene}" has no source called "${settings.sourceName}". Check both names in the OBS NPC Cam settings, or click "Set up OBS".`);
   await client.request('SetSceneItemEnabled', { sceneName: settings.npcScene, sceneItemId: item['sceneItemId'], sceneItemEnabled: visible });
 }
 
-/** Switches the live output. In Studio Mode the preview follows too, so what you look at matches what goes out. */
-async function switchScene(client: ObsClient, sceneName: string): Promise<void> {
-  await client.request('SetCurrentProgramScene', { sceneName });
-  const studio = await exists(client, 'GetStudioModeEnabled', {});
-  if (studio?.['studioModeEnabled'] === true) await client.request('SetCurrentPreviewScene', { sceneName });
-}
 
 /**
- * Makes sure OBS has the NPC scene with a Browser source for the portrait in it. Only ever adds things;
+ * Makes sure your camera scene has a Browser source for the portrait on top. Only ever adds things;
  * nothing in OBS is changed or removed. Returns what it did, one line each.
  */
 export async function setupObs(client: ObsClient, settings: CamSettings): Promise<string[]> {
@@ -125,12 +107,11 @@ export async function setupObs(client: ObsClient, settings: CamSettings): Promis
   const list = await client.request('GetSceneList');
   const scenes = ((list['scenes'] as { sceneName?: string }[] | undefined) ?? []).map(s => s.sceneName ?? '');
 
-  if (!settings.npcScene) throw new ObsError('Set the NPC scene name in the OBS NPC Cam settings first.');
-  if (scenes.includes(settings.npcScene)) report.push(`Found the scene "${settings.npcScene}".`);
-  else {
-    await client.request('CreateScene', { sceneName: settings.npcScene });
-    report.push(`Created the scene "${settings.npcScene}".`);
+  if (!settings.npcScene) throw new ObsError('Set the OBS scene name in the OBS NPC Cam settings first.');
+  if (!scenes.includes(settings.npcScene)) {
+    throw new ObsError(`OBS has no scene called "${settings.npcScene}". Enter the exact name of the scene with your camera in the settings. Your scenes: ${scenes.join(', ')}.`);
   }
+  report.push(`Found the scene "${settings.npcScene}".`);
 
   const input = await exists(client, 'GetInputSettings', { inputName: settings.sourceName });
   if (input && input['inputKind'] !== 'browser_source') {
@@ -145,21 +126,17 @@ export async function setupObs(client: ObsClient, settings: CamSettings): Promis
       inputName: settings.sourceName,
       inputKind: 'browser_source',
       inputSettings: { url: 'about:blank', css: portraitCss(), width, height },
-      sceneItemEnabled: true
+      sceneItemEnabled: false
     });
-    report.push(`Created the Browser source "${settings.sourceName}" (${String(width)}x${String(height)}) in "${settings.npcScene}".`);
+    report.push(`Created the Browser source "${settings.sourceName}" (${String(width)}x${String(height)}) on top of "${settings.npcScene}", hidden until you click Show on cam.`);
   } else {
     const item = await exists(client, 'GetSceneItemId', { sceneName: settings.npcScene, sourceName: settings.sourceName });
     if (item) report.push(`Found the source "${settings.sourceName}" in "${settings.npcScene}".`);
     else {
-      await client.request('CreateSceneItem', { sceneName: settings.npcScene, sourceName: settings.sourceName, sceneItemEnabled: true });
+      await client.request('CreateSceneItem', { sceneName: settings.npcScene, sourceName: settings.sourceName, sceneItemEnabled: false });
       report.push(`Added the existing source "${settings.sourceName}" to "${settings.npcScene}".`);
     }
   }
 
-  if (settings.switchMode !== 'scene') return report;
-  if (!settings.cameraScene) report.push('No camera scene is set, so "Back to my camera" will not work yet.');
-  else if (scenes.includes(settings.cameraScene)) report.push(`Found the camera scene "${settings.cameraScene}".`);
-  else report.push(`OBS has no scene called "${settings.cameraScene}". Set your camera scene's exact name in the settings. Your scenes: ${scenes.join(', ')}.`);
   return report;
 }

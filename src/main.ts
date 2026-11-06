@@ -1,6 +1,6 @@
 /**
  * OBS NPC Cam: show an NPC's portrait in OBS with one click, from a token's HUD, an actor's sheet,
- * the Actors list or a keybinding, and switch OBS between the NPC scene and your camera.
+ * the Actors list or a keybinding, over your camera in OBS, and hide it again to go back to your camera.
  *
  * Talks straight to OBS's built-in remote control (Tools > WebSocket Server Settings) from the GM's browser.
  * Macro API:
@@ -10,7 +10,7 @@
  *   await cam.camera();
  */
 
-import { MODULE_ID, backToCamera, pickImage, setupObs, showPortrait, type CamSettings, type Portrait, type SwitchMode } from './cam';
+import { MODULE_ID, backToCamera, pickImage, setupObs, showPortrait, type CamSettings, type Portrait } from './cam';
 import { ObsClient, type SocketLike } from './obsClient';
 
 interface TokenDocLike {
@@ -68,8 +68,6 @@ function camSettings(): CamSettings {
   return {
     npcScene: text('npcScene'),
     sourceName: text('sourceName'),
-    cameraScene: text('cameraScene'),
-    switchMode: (['scene', 'source', 'none'] as const).find(mode => mode === setting('switchMode')) ?? ('scene' satisfies SwitchMode),
     showName: setting('showName') === true
   };
 }
@@ -124,8 +122,7 @@ async function showSelected(): Promise<void> {
 }
 
 async function camera(): Promise<void> {
-  const done = await backToCamera(await connected(), camSettings());
-  g().ui.notifications?.info(`OBS NPC Cam: ${done}.`);
+  await backToCamera(await connected(), camSettings());
 }
 
 const escapeHtml = (text: string): string =>
@@ -184,18 +181,8 @@ g().Hooks.once('init', () => {
     onChange: reconnect
   });
   textSetting('password', 'OBS password', 'OBS: Tools > WebSocket Server Settings > Show Connect Info > Server Password. Stored only in this browser.', '', reconnect);
-  textSetting('npcScene', 'NPC scene', 'The exact name of the OBS scene the portrait source is in. If you show the NPC over your camera in one scene, this is that scene.', 'NPC');
-  textSetting('sourceName', 'Portrait source', 'The OBS Browser source that shows the portrait. "Set up OBS" creates it.', 'NPC Portrait');
-  textSetting('cameraScene', 'Camera scene', 'The exact name of your OBS scene with your own camera, for "Back to my camera" when switching scenes.', 'Camera');
-  settings.register(MODULE_ID, 'switchMode', {
-    name: 'Switching between NPC and camera',
-    hint: 'Switch scenes: Show on cam switches to the NPC scene, Back to my camera to the camera scene. Show/hide the portrait: the portrait source sits over your camera in one scene, and the buttons turn it on and off (the eye icon in OBS). Picture only: just swap the picture and switch yourself, for example with your Stream Deck.',
-    scope: 'client',
-    config: true,
-    type: String,
-    choices: { scene: 'Switch scenes', source: 'Show/hide the portrait', none: 'Picture only' },
-    default: 'scene'
-  });
+  textSetting('npcScene', 'OBS scene', 'The exact name of the OBS scene with your camera. The portrait sits on top of the camera in this scene.', 'Camera');
+  textSetting('sourceName', 'Portrait source', 'The OBS Browser source that shows the portrait. "Set up OBS" creates it. Show on cam turns it on, Back to my camera turns it off (the eye icon in OBS).', 'NPC Portrait');
   settings.register(MODULE_ID, 'showName', {
     name: 'Show the name',
     hint: "Show the token's name under the portrait (the name the players see on the token).",
@@ -221,7 +208,7 @@ g().Hooks.once('init', () => {
       settings.registerMenu(MODULE_ID, 'setup', {
         name: 'Set up OBS',
         label: 'Set up OBS',
-        hint: 'Connects to OBS and adds the NPC scene and portrait source if they are missing. It never changes or removes anything already in OBS.',
+        hint: 'Connects to OBS and adds the portrait source on top of your camera scene if it is missing. It never changes or removes anything already in OBS.',
         icon: 'fa-solid fa-plug',
         type: SetupRunner,
         restricted: true

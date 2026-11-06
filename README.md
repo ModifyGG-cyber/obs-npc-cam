@@ -1,6 +1,6 @@
 # OBS NPC Cam
 
-Show an NPC's portrait in OBS with one click from Foundry VTT, and switch OBS between the NPC and your own camera. Built for running NPCs "on camera" through the OBS virtual camera, without opening OBS to change images. Works with any game system.
+Show an NPC's portrait in OBS with one click from Foundry VTT, on top of your own camera in the same scene, and hide it again to go back to your camera. Built for running NPCs "on camera" through the OBS virtual camera, without opening OBS to change images. Works with any game system.
 
 ## What you get
 
@@ -8,15 +8,15 @@ Show an NPC's portrait in OBS with one click from Foundry VTT, and switch OBS be
 - Two buttons in the token controls on the left: **Show selected token on cam** and **Back to my camera**.
 - Optional keybindings for both (Configure Controls > OBS NPC Cam; no keys are set by default).
 - The portrait fades in, fits the screen, and can carry the NPC's name as a caption. OBS loads the image straight from Foundry and styles it with the Browser source's custom CSS.
-- Your Stream Deck scene toggles keep working: the module only changes one Browser source, and switching to the NPC scene is optional.
+- Everything happens in one OBS scene: the portrait source sits on top of your camera, Show on cam turns it on and Back to my camera turns it off. A Stream Deck button that toggles the source's visibility keeps working too.
 
 Only the GM sees the buttons. The connection runs from the GM's browser, so Foundry and OBS should be on the same computer (or set the OBS address in the settings).
 
 ## Setup
 
 1. In OBS (28 or newer): **Tools > WebSocket Server Settings**, tick **Enable WebSocket server**, then **Show Connect Info** and copy the password.
-2. In Foundry: **Configure Settings > OBS NPC Cam**, paste the password, and set the exact names of your **NPC scene** and **Camera scene**.
-3. Click **Set up OBS**. It adds the NPC scene (if missing) and a Browser source called "NPC Portrait" sized to your canvas. It never changes or removes anything already in OBS. If your NPC scene already had an image source, hide or delete it yourself.
+2. In Foundry: **Configure Settings > OBS NPC Cam**, paste the password, and set the exact name of the OBS scene with your camera.
+3. Click **Set up OBS**. It adds a Browser source called "NPC Portrait", sized to your canvas, on top of your camera in that scene (hidden until you show someone). It never changes or removes anything already in OBS.
 
 Then right-click an NPC token and click the masked-figure icon.
 
@@ -25,10 +25,8 @@ Then right-click an NPC token and click the masked-figure icon.
 | Setting | Default | |
 | --- | --- | --- |
 | OBS address / port / password | localhost / 4455 / empty | From OBS's WebSocket Server Settings. Stored only in this browser. |
-| NPC scene | NPC | The scene the portrait source is in. |
-| Portrait source | NPC Portrait | The Browser source the module changes. |
-| Camera scene | Camera | Used by "Back to my camera". |
-| Switching between NPC and camera | Switch scenes | Switch scenes; Show/hide the portrait (the portrait source sits over your camera in one scene and the buttons toggle it); or Picture only (you switch yourself, e.g. with a Stream Deck). |
+| OBS scene | Camera | The scene with your camera; the portrait sits on top of it. |
+| Portrait source | NPC Portrait | The Browser source the module changes and shows or hides. |
 | Show the name | off | Caption with the token's name (what the players see). |
 | Picture to use | Actor portrait | Or token art. Falls back to the other when one is the default silhouette. |
 

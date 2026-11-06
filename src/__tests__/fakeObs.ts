@@ -16,6 +16,13 @@ export class FakeObs {
   program = 'Camera';
   preview = '';
   readonly enabled = new Map<string, boolean>();
+  readonly itemNames = new Map<number, string>();
+  private itemId(source: string): number {
+    for (const [id, n] of this.itemNames) if (n === source) return id;
+    const id = this.itemNames.size + 1;
+    this.itemNames.set(id, source);
+    return id;
+  }
   studio = false;
   readonly log: string[] = [];
   private server: WebSocketServer;
@@ -99,11 +106,11 @@ export class FakeObs {
       }
       case 'GetSceneItemId': {
         if (!this.scenes.get(name('sceneName'))?.includes(name('sourceName'))) throw new Error('no item');
-        return { sceneItemId: 1 };
+        return { sceneItemId: this.itemId(name('sourceName')) };
       }
       case 'SetSceneItemEnabled':
         if (!this.scenes.has(name('sceneName'))) throw new Error('no scene');
-        this.enabled.set(`${name('sceneName')}/${[...this.inputs.keys()].find(n => this.scenes.get(name('sceneName'))?.includes(n) && n !== 'Webcam') ?? ''}`, data['sceneItemEnabled'] === true);
+        this.enabled.set(`${name('sceneName')}/${this.itemNames.get(Number(data['sceneItemId'])) ?? ''}`, data['sceneItemEnabled'] === true);
         return {};
       case 'CreateSceneItem':
         this.scenes.get(name('sceneName'))?.push(name('sourceName'));
