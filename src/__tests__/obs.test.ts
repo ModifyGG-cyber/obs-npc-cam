@@ -5,7 +5,7 @@ import { backToCamera, imageUrl, pickImage, portraitCss, setupObs, showPortrait,
 import { obsAuthentication, sha256Fallback } from '../sha256';
 
 const BASE = 'http://localhost:30000/';
-const settings: CamSettings = { npcScene: 'Camera', sourceName: 'NPC Portrait', showName: true, backdrop: 'black' };
+const settings: CamSettings = { npcScene: 'Camera', sourceName: 'NPC Portrait', cameraSource: 'Webcam', showName: true, backdrop: 'black' };
 
 describe('sha256', () => {
   it('matches Node for many lengths', () => {
@@ -90,7 +90,8 @@ describe('with a fake OBS', () => {
 
     expect(await setupObs(client, settings)).toEqual([
       'Found the scene "Camera".',
-      'Created the Browser source "NPC Portrait" (1280x720) on top of "Camera", hidden until you click Show on cam.'
+      'Created the Browser source "NPC Portrait" (1280x720) on top of "Camera", hidden until you click Show on cam.',
+      'Found your camera source "Webcam".'
     ]);
     expect(obs.inputs.get('NPC Portrait')).toEqual({ kind: 'browser_source', settings: { url: 'about:blank', css: portraitCss(), width: 1280, height: 720 } });
     expect(obs.scenes.get('Camera')).toEqual(['Webcam', 'NPC Portrait']);
@@ -100,13 +101,15 @@ describe('with a fake OBS', () => {
     expect(String(shown['url'])).toMatch(/^http:\/\/localhost:30000\/worlds\/w\/elias\.webp\?npc-cam=\d+$/);
     expect(shown['css']).toContain('content: "Jackson Elias"');
     expect(obs.enabled.get('Camera/NPC Portrait')).toBe(true);
+    expect(obs.enabled.get('Camera/Webcam')).toBe(false);
     expect(obs.program).toBe('Camera');
 
     await backToCamera(client, settings);
     expect(obs.enabled.get('Camera/NPC Portrait')).toBe(false);
+    expect(obs.enabled.get('Camera/Webcam')).toBe(true);
 
     // Running setup again adds nothing.
-    expect(await setupObs(client, settings)).toEqual(['Found the scene "Camera".', 'Found the source "NPC Portrait" in "Camera".']);
+    expect(await setupObs(client, settings)).toEqual(['Found the scene "Camera".', 'Found the source "NPC Portrait" in "Camera".', 'Found your camera source "Webcam".']);
   });
 
   it('can hide the name', async () => {

@@ -8,7 +8,7 @@ Show an NPC's portrait in OBS with one click from Foundry VTT, on top of your ow
 - Two buttons in the token controls on the left: **Show selected token on cam** and **Back to my camera**.
 - Optional keybindings for both (Configure Controls > OBS NPC Cam; no keys are set by default).
 - The portrait fades in, fits the screen, and can carry the NPC's name as a caption. OBS loads the image straight from Foundry and styles it with the Browser source's custom CSS.
-- Everything happens in one OBS scene: the portrait source sits on top of your camera, Show on cam turns it on and Back to my camera turns it off. A Stream Deck button that toggles the source's visibility keeps working too.
+- Everything happens in one OBS scene: the portrait source sits on top of your camera, Show on cam turns it on and hides your webcam source; Back to my camera does the reverse. A Stream Deck button that toggles the source's visibility keeps working too.
 
 Only the GM sees the buttons. The connection runs from the GM's browser, so Foundry and OBS should be on the same computer (or set the OBS address in the settings).
 
@@ -27,6 +27,7 @@ Then right-click an NPC token and click the masked-figure icon.
 | OBS address / port / password | localhost / 4455 / empty | From OBS's WebSocket Server Settings. Stored only in this browser. |
 | OBS scene | Camera | The scene with your camera; the portrait sits on top of it. |
 | Portrait source | NPC Portrait | The Browser source the module changes and shows or hides. |
+| Camera source | Camera | Your webcam source, hidden while an NPC is shown. Empty: never touched. |
 | Around the picture | Black | Black hides your camera behind the portrait; see-through lets it show around the picture. |
 | Show the name | off | Caption with the token's name (what the players see). |
 | Picture to use | Actor portrait | Or token art. Falls back to the other when one is the default silhouette. |

@@ -68,6 +68,7 @@ function camSettings(): CamSettings {
   return {
     npcScene: text('npcScene'),
     sourceName: text('sourceName'),
+    cameraSource: text('cameraSource'),
     showName: setting('showName') === true,
     backdrop: setting('backdrop') === 'transparent' ? 'transparent' : 'black'
   };
@@ -184,6 +185,7 @@ g().Hooks.once('init', () => {
   textSetting('password', 'OBS password', 'OBS: Tools > WebSocket Server Settings > Show Connect Info > Server Password. Stored only in this browser.', '', reconnect);
   textSetting('npcScene', 'OBS scene', 'The exact name of the OBS scene with your camera. The portrait sits on top of the camera in this scene.', 'Camera');
   textSetting('sourceName', 'Portrait source', 'The OBS Browser source that shows the portrait. "Set up OBS" creates it. Show on cam turns it on, Back to my camera turns it off (the eye icon in OBS).', 'NPC Portrait');
+  textSetting('cameraSource', 'Camera source', 'Your webcam source in the same scene. It is hidden while an NPC is shown and comes back with Back to my camera. Leave empty to never touch it.', 'Camera');
   settings.register(MODULE_ID, 'backdrop', {
     name: 'Around the picture',
     hint: 'What fills the screen around the portrait. Black hides your camera completely; see-through lets your camera show around the picture.',

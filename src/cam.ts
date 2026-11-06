@@ -13,6 +13,8 @@ export type Backdrop = 'black' | 'transparent';
 export interface CamSettings {
   npcScene: string;
   sourceName: string;
+  /** Your webcam source in the same scene, hidden while an NPC is shown. Empty: leave it alone. */
+  cameraSource: string;
   showName: boolean;
   backdrop: Backdrop;
 }
@@ -86,18 +88,21 @@ export async function showPortrait(client: ObsClient, settings: CamSettings, fou
     inputSettings: { url: imageUrl(foundryBase, portrait.img), css: portraitCss(shown.name, settings.backdrop), is_local_file: false },
     overlay: true
   });
-  await setSourceVisible(client, settings, true);
+  // Portrait on first, then the camera off, so the stream never flashes empty.
+  await setSourceVisible(client, settings, settings.sourceName, true);
+  if (settings.cameraSource) await setSourceVisible(client, settings, settings.cameraSource, false);
 }
 
-/** Back to your own camera: hides the portrait source, so the camera underneath shows again. */
+/** Back to your own camera: camera source on, portrait source off. */
 export async function backToCamera(client: ObsClient, settings: CamSettings): Promise<void> {
-  await setSourceVisible(client, settings, false);
+  if (settings.cameraSource) await setSourceVisible(client, settings, settings.cameraSource, true);
+  await setSourceVisible(client, settings, settings.sourceName, false);
 }
 
-/** Shows or hides the portrait source in the camera scene (the eye icon in OBS). */
-async function setSourceVisible(client: ObsClient, settings: CamSettings, visible: boolean): Promise<void> {
-  const item = await exists(client, 'GetSceneItemId', { sceneName: settings.npcScene, sourceName: settings.sourceName });
-  if (!item) throw new ObsError(`The scene "${settings.npcScene}" has no source called "${settings.sourceName}". Check both names in the OBS NPC Cam settings, or click "Set up OBS".`);
+/** Shows or hides a source in the scene (the eye icon in OBS). */
+async function setSourceVisible(client: ObsClient, settings: CamSettings, sourceName: string, visible: boolean): Promise<void> {
+  const item = await exists(client, 'GetSceneItemId', { sceneName: settings.npcScene, sourceName });
+  if (!item) throw new ObsError(`The scene "${settings.npcScene}" has no source called "${sourceName}". Check the names in the OBS NPC Cam settings.`);
   await client.request('SetSceneItemEnabled', { sceneName: settings.npcScene, sceneItemId: item['sceneItemId'], sceneItemEnabled: visible });
 }
 
@@ -142,5 +147,9 @@ export async function setupObs(client: ObsClient, settings: CamSettings): Promis
     }
   }
 
+  if (settings.cameraSource) {
+    const camera = await exists(client, 'GetSceneItemId', { sceneName: settings.npcScene, sourceName: settings.cameraSource });
+    report.push(camera ? `Found your camera source "${settings.cameraSource}".` : `"${settings.npcScene}" has no source called "${settings.cameraSource}". Enter your webcam source's exact name in the settings.`);
+  }
   return report;
 }
