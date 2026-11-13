@@ -8,6 +8,9 @@
  *   await cam.show(actorOrToken);            // or cam.show({ img: 'path/to/image.webp', name: 'Caption' })
  *   await cam.showSelected();
  *   await cam.camera();
+ *
+ * Hooks for other modules: 'obsNpcCam.show' (portrait { img, name }, subject) after a portrait is shown,
+ * and 'obsNpcCam.camera' after going back to the camera.
  */
 
 import { MODULE_ID, backToCamera, pickImage, setupObs, showPortrait, type CamSettings, type Portrait } from './cam';
@@ -46,7 +49,11 @@ interface Globals {
     modules: { get(id: string): { api?: Record<string, unknown> } | undefined };
   };
   canvas?: { tokens?: { controlled?: TokenLike[] } } | null;
-  Hooks: { on(hook: string, fn: (...args: unknown[]) => unknown): number; once(hook: string, fn: (...args: unknown[]) => unknown): number };
+  Hooks: {
+    on(hook: string, fn: (...args: unknown[]) => unknown): number;
+    once(hook: string, fn: (...args: unknown[]) => unknown): number;
+    callAll?(hook: string, ...args: unknown[]): boolean;
+  };
   ui: { notifications?: Notifications };
   foundry?: {
     utils?: { getRoute?(path: string): string };
@@ -117,6 +124,8 @@ async function show(subject: unknown): Promise<void> {
   if (!portrait) throw new Error('That has no image to show.');
   const settings = camSettings();
   await showPortrait(await connected(), settings, foundryBase(), portrait);
+  // Lets other modules follow along (Discord Speaking Portraits speaks as whoever is on cam).
+  g().Hooks.callAll?.('obsNpcCam.show', portrait, subject);
 }
 
 async function showSelected(): Promise<void> {
@@ -128,6 +137,7 @@ async function showSelected(): Promise<void> {
 async function camera(): Promise<void> {
   const settings = camSettings();
   await backToCamera(await connected(), settings);
+  g().Hooks.callAll?.('obsNpcCam.camera');
 }
 
 const escapeHtml = (text: string): string =>
@@ -280,26 +290,6 @@ g().Hooks.once('init', () => {
     } catch (error) {
       console.warn('OBS NPC Cam | Could not add the token control buttons:', error);
     }
-  });
-
-  // Token HUD (right-click a token): a button in the right-hand column.
-  g().Hooks.on('renderTokenHUD', (hud: unknown, html: unknown) => {
-    if (!isGM()) return;
-    const root = html instanceof HTMLElement ? html : (html as { [0]?: unknown } | null)?.[0];
-    if (!(root instanceof HTMLElement)) return;
-    const column = root.querySelector('.col.right');
-    if (!column || column.querySelector('.obs-npc-cam')) return;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'control-icon obs-npc-cam';
-    button.title = SHOW_LABEL;
-    button.innerHTML = `<i class="${SHOW_ICON}"></i>`;
-    button.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      run(() => show((hud as { object?: TokenLike }).object));
-    });
-    column.appendChild(button);
   });
 
   // Actors list: right-click an actor.

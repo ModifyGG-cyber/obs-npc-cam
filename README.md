@@ -4,7 +4,7 @@ Show an NPC's portrait in OBS with one click from Foundry VTT, on top of your ow
 
 ## What you get
 
-- **Show on cam** on a token's right-click menu (the HUD), on actor sheets, and on the right-click menu in the Actors list.
+- **Show on cam** on actor sheets and on the right-click menu in the Actors list.
 - Two buttons in the token controls on the left: **Show selected token on cam** and **Back to my camera**.
 - Optional keybindings for both (Configure Controls > OBS NPC Cam; no keys are set by default).
 - The portrait fades in, fits the screen, and can carry the NPC's name as a caption. OBS loads the image straight from Foundry and styles it with the Browser source's custom CSS.
@@ -18,7 +18,7 @@ Only the GM sees the buttons. The connection runs from the GM's browser, so Foun
 2. In Foundry: **Configure Settings > OBS NPC Cam**, paste the password, and set the exact name of the OBS scene with your camera.
 3. Click **Set up OBS**. It adds a Browser source called "NPC Portrait", sized to your canvas, on top of your camera in that scene (hidden until you show someone). It never changes or removes anything already in OBS.
 
-Then right-click an NPC token and click the masked-figure icon.
+Then select an NPC token and click **Show selected token on cam** in the token controls on the left.
 
 ## Settings
 
@@ -40,6 +40,8 @@ await cam.showSelected();
 await cam.camera();
 await cam.setup();
 ```
+
+Other modules can follow along with the hooks `obsNpcCam.show` (called with the portrait `{ img, name }` and the token or actor) and `obsNpcCam.camera`. [Discord Speaking Portraits](https://github.com/ModifyGG-cyber/discord-speaking-portraits) uses them to speak as whoever is on cam.
 
 ## Development
 
