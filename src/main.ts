@@ -292,26 +292,6 @@ g().Hooks.once('init', () => {
     }
   });
 
-  // Token HUD (right-click a token): a button in the right-hand column.
-  g().Hooks.on('renderTokenHUD', (hud: unknown, html: unknown) => {
-    if (!isGM()) return;
-    const root = html instanceof HTMLElement ? html : (html as { [0]?: unknown } | null)?.[0];
-    if (!(root instanceof HTMLElement)) return;
-    const column = root.querySelector('.col.right');
-    if (!column || column.querySelector('.obs-npc-cam')) return;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'control-icon obs-npc-cam';
-    button.title = SHOW_LABEL;
-    button.innerHTML = `<i class="${SHOW_ICON}"></i>`;
-    button.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      run(() => show((hud as { object?: TokenLike }).object));
-    });
-    column.appendChild(button);
-  });
-
   // Actors list: right-click an actor.
   const contextEntry = {
     name: SHOW_LABEL,
